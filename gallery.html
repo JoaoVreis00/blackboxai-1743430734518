@@ -30,7 +30,13 @@
 
     <main class="container mx-auto p-4">
         <div class="mb-8 bg-white rounded-lg shadow-md p-6">
-            <h2 class="text-2xl font-bold mb-4">Galeria de Materiais</h2>
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-2xl font-bold">Galeria de Materiais</h2>
+                <div class="text-sm text-gray-500 bg-blue-50 px-3 py-1 rounded-full">
+                    <i class="fas fa-info-circle mr-1"></i>
+                    Sincronização entre dispositivos requer conexão com nuvem
+                </div>
+            </div>
 
             <div class="mb-6">
                 <div class="flex flex-wrap gap-2 mb-4">
@@ -135,15 +141,24 @@
             </div>
     </main>
 
+    <script src="database.js"></script>
     <script>
+        // Functions are now available globally from database.js
+        
         let currentBelt = 'all';
+        let currentCategory = 'all';
         let currentSearch = '';
         let currentPage = 1;
         const itemsPerPage = 9;
 
         // Load materials when page loads
-        document.addEventListener('DOMContentLoaded', () => {
-            loadMaterials();
+        document.addEventListener('DOMContentLoaded', async () => {
+            try {
+                await loadMaterials();
+            } catch (error) {
+                console.error('Error loading materials:', error);
+                document.getElementById('loading').textContent = 'Erro ao carregar materiais';
+            }
         });
 
         // Filter by belt
@@ -156,6 +171,20 @@
                 btn.classList.remove('active');
             });
             document.querySelector(`.belt-filter[data-belt="${belt}"]`).classList.add('active');
+
+            loadMaterials();
+        }
+
+        // Filter by category
+        function filterByCategory(category) {
+            currentCategory = category;
+            currentPage = 1;
+
+            // Update active filter button
+            document.querySelectorAll('.category-filter').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            document.querySelector(`.category-filter[data-category="${category}"]`).classList.add('active');
 
             loadMaterials();
         }
@@ -173,25 +202,33 @@
             loadMaterials();
         }
 
-        // Load materials from local storage
-        function loadMaterials() {
+        // Load materials from IndexedDB
+        async function loadMaterials() {
             document.getElementById('loading').classList.remove('hidden');
             document.getElementById('materialsContainer').classList.add('hidden');
             document.getElementById('noResults').classList.add('hidden');
 
-            const mediaData = JSON.parse(localStorage.getItem('mediaData')) || [];
-            
-            // Filter by belt and search term
-            const filteredMaterials = mediaData.filter(m => {
-                const matchesBelt = currentBelt === 'all' || m.belt === currentBelt;
-                const matchesSearch = currentSearch
-                    ? m.description && m.description.toLowerCase().includes(currentSearch)
-                    : true;
-                return matchesBelt && matchesSearch;
-            });
+            try {
+                const mediaData = await KarateMediaDB.getAllMedia();
+                
+                // Filter by belt, category and search term
+                const filteredMaterials = mediaData.filter(m => {
+                    const matchesBelt = currentBelt === 'all' || m.belt === currentBelt;
+                    const matchesCategory = currentCategory === 'all' || m.category === currentCategory;
+                    const matchesSearch = currentSearch
+                        ? m.description && m.description.toLowerCase().includes(currentSearch)
+                        : true;
+                    return matchesBelt && matchesCategory && matchesSearch;
+                });
 
-            displayMaterials(filteredMaterials);
-            document.getElementById('loading').classList.add('hidden');
+                displayMaterials(filteredMaterials);
+            } catch (error) {
+                console.error('Error loading materials:', error);
+                document.getElementById('loading').textContent = 'Erro ao carregar materiais';
+                throw error;
+            } finally {
+                document.getElementById('loading').classList.add('hidden');
+            }
         }
 
         // Display materials in grid
@@ -220,6 +257,51 @@
             document.getElementById('materialsContainer').classList.remove('hidden');
         }
 
+        // Preview modal HTML
+        const previewModal = `
+        <div id="previewModal" class="fixed inset-0 z-50 hidden">
+            <div class="absolute inset-0 bg-black bg-opacity-75"></div>
+            <div class="relative flex items-center justify-center h-full w-full">
+                <div class="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-auto">
+                    <div class="flex justify-between items-center p-4 border-b">
+                        <h3 class="text-xl font-bold">Visualização</h3>
+                        <button onclick="document.getElementById('previewModal').classList.add('hidden')" 
+                            class="text-gray-500 hover:text-gray-700">
+                            <i class="fas fa-times text-2xl"></i>
+                        </button>
+                    </div>
+                    <div id="previewContent" class="p-4"></div>
+                    <div id="previewActions" class="p-4 border-t flex justify-end space-x-2 hidden">
+                        <button id="downloadBtn" class="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700">
+                            <i class="fas fa-download mr-2"></i> Baixar
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>`;
+
+        // Edit modal HTML
+        const editModal = `
+        <div id="editModal" class="fixed inset-0 z-50 hidden">
+            <div class="absolute inset-0 bg-black bg-opacity-75"></div>
+            <div class="relative flex items-center justify-center h-full w-full">
+                <div class="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-auto p-6">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-xl font-bold">Editar Material</h3>
+                        <button onclick="document.getElementById('editModal').classList.add('hidden')" 
+                            class="text-gray-500 hover:text-gray-700">
+                            <i class="fas fa-times text-2xl"></i>
+                        </button>
+                    </div>
+                    <div id="editFormContent"></div>
+                </div>
+            </div>
+        </div>`;
+
+        // Add modals to body
+        document.body.insertAdjacentHTML('beforeend', previewModal);
+        document.body.insertAdjacentHTML('beforeend', editModal);
+
         // Create material card HTML
         function createMaterialCard(material) {
             const date = new Date(material.date).toLocaleDateString('pt-BR');
@@ -227,7 +309,8 @@
             const hasLinks = material.links && material.links.trim() !== '';
 
             return `
-        <div class="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-all" data-id="${material.id}">
+        <div class="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-all cursor-pointer" 
+             data-id="${material.id}" onclick="showPreview('${material.id}')">
           <div class="relative">
             ${getMediaPreview(material)}
             <span class="absolute top-2 left-2 px-2 py-1 rounded-full text-xs text-white" 
@@ -245,7 +328,7 @@
               <span>${date}</span>
               <div class="flex space-x-2">
                 ${getDownloadButton(material)}
-                <button onclick="editMaterial('${material.id}')" class="text-blue-500 hover:text-blue-700">
+                <button onclick="editMaterial('${material.id}', event)" class="text-blue-500 hover:text-blue-700">
                   <i class="fas fa-edit"></i>
                 </button>
                 <button onclick="deleteMaterial('${material.id}')" class="text-red-500 hover:text-red-700">
@@ -258,42 +341,164 @@
       `;
         }
 
-        function editMaterial(id) {
-            const mediaData = JSON.parse(localStorage.getItem('mediaData')) || [];
-            const material = mediaData.find(m => m.id.toString() === id);
-            if (material) {
-                // Populate the upload form with material data
-                document.getElementById('belt').value = material.belt;
-                document.getElementById('description').value = material.description;
-                document.getElementById('links').value = material.links || '';
-                
-                // Show files in the file list
-                const fileList = document.getElementById('fileList');
-                fileList.innerHTML = '';
-                material.files.forEach(file => {
-                    fileList.innerHTML += `
-                        <div class="flex items-center justify-between bg-gray-50 p-2 rounded mb-2" data-filename="${file.name}">
-                            <span class="truncate">${file.name}</span>
-                            <input type="hidden" class="file-content" value="${file.content}">
+        async function editMaterial(id, event) {
+            event.stopPropagation();
+            try {
+                const mediaData = await KarateMediaDB.getAllMedia();
+                const material = mediaData.find(m => m.id.toString() === id);
+                if (!material) return;
+
+                const editForm = document.getElementById('editFormContent');
+                editForm.innerHTML = `
+                <form id="editMaterialForm" class="space-y-4">
+                    <div>
+                        <label class="block text-gray-700 font-bold mb-2" for="editBelt">Faixa:</label>
+                        <select name="belt" id="editBelt"
+                            class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            required>
+                            <option value="">Selecione uma faixa</option>
+                            <option value="branca" ${material.belt === 'branca' ? 'selected' : ''}>Branca</option>
+                            <option value="amarela" ${material.belt === 'amarela' ? 'selected' : ''}>Amarela</option>
+                            <option value="laranja" ${material.belt === 'laranja' ? 'selected' : ''}>Laranja</option>
+                            <option value="azul" ${material.belt === 'azul' ? 'selected' : ''}>Azul</option>
+                            <option value="verde" ${material.belt === 'verde' ? 'selected' : ''}>Verde</option>
+                            <option value="roxa" ${material.belt === 'roxa' ? 'selected' : ''}>Roxa</option>
+                            <option value="marrom" ${material.belt === 'marrom' ? 'selected' : ''}>Marrom</option>
+                            <option value="preta" ${material.belt === 'preta' ? 'selected' : ''}>Preta</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block text-gray-700 font-bold mb-2" for="editCategory">Categoria:</label>
+                        <select name="category" id="editCategory"
+                            class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            required>
+                            <option value="">Selecione uma categoria</option>
+                            <option value="kata" ${material.category === 'kata' ? 'selected' : ''}>Kata</option>
+                            <option value="kihon" ${material.category === 'kihon' ? 'selected' : ''}>Kihon</option>
+                            <option value="bunkai" ${material.category === 'bunkai' ? 'selected' : ''}>Bunkai</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block text-gray-700 font-bold mb-2">Tipo de Conteúdo:</label>
+                        <div class="flex space-x-4">
+                            <label class="inline-flex items-center">
+                                <input type="radio" name="contentType" value="file" 
+                                    ${material.files?.length > 0 ? 'checked' : ''} 
+                                    class="form-radio text-red-600">
+                                <span class="ml-2">Arquivo</span>
+                            </label>
+                            <label class="inline-flex items-center">
+                                <input type="radio" name="contentType" value="link" 
+                                    ${material.links ? 'checked' : ''}
+                                    class="form-radio text-red-600">
+                                <span class="ml-2">Link</span>
+                            </label>
                         </div>
-                    `;
-                });
+                    </div>
 
-                // Remove the material from storage (will be re-added if saved)
-                localStorage.setItem('mediaData', 
-                    JSON.stringify(mediaData.filter(m => m.id.toString() !== id)));
+                    <div id="editFileSection" class="${material.links ? 'hidden' : ''}">
+                        <label class="block text-gray-700 font-bold mb-2">Arquivo:</label>
+                        <div class="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center">
+                            <input type="file" id="editFiles" name="files" class="hidden"
+                                accept="image/*,video/*,.pdf,.doc,.docx,.txt">
+                            <label for="editFiles" class="cursor-pointer">
+                                <i class="fas fa-cloud-upload-alt text-4xl text-gray-400 mb-2"></i>
+                                <p class="text-gray-500">Clique para selecionar arquivo</p>
+                            </label>
+                        </div>
+                        <div id="editFileList" class="mt-2">
+                            ${material.files?.map(file => `
+                                <div class="flex items-center justify-between bg-gray-50 p-2 rounded mb-2">
+                                    <span class="truncate">${file.name}</span>
+                                </div>
+                            `).join('') || ''}
+                        </div>
+                    </div>
+
+                    <div id="editLinkSection" class="${material.files?.length > 0 ? 'hidden' : ''}">
+                        <label class="block text-gray-700 font-bold mb-2" for="editLinks">Link:</label>
+                        <input type="text" id="editLinks" name="links" value="${material.links || ''}"
+                            class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+
+                    <div>
+                        <label class="block text-gray-700 font-bold mb-2" for="editDescription">Descrição:</label>
+                        <textarea id="editDescription" name="description" rows="3"
+                            class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">${material.description || ''}</textarea>
+                    </div>
+
+                    <div class="flex justify-end space-x-2">
+                        <button type="button" onclick="document.getElementById('editModal').classList.add('hidden')"
+                            class="px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded-lg">
+                            Cancelar
+                        </button>
+                        <button type="submit"
+                            class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg">
+                            Salvar Alterações
+                        </button>
+                    </div>
+                </form>
+            `;
+
+            // Handle form submission
+            document.getElementById('editMaterialForm').addEventListener('submit', async (e) => {
+                e.preventDefault();
                 
-                // Scroll to upload form
-                window.location.href = '/upload.html';
-            }
-        }
+                try {
+                    // Get form values
+                    const belt = document.getElementById('editBelt').value;
+                    const category = document.getElementById('editCategory').value;
+                    const description = document.getElementById('editDescription').value;
+                    const contentType = document.querySelector('input[name="contentType"]:checked').value;
+                    
+                    // Update material
+                    material.belt = belt;
+                    material.category = category;
+                    material.description = description;
+                    
+                    if (contentType === 'link') {
+                        material.links = document.getElementById('editLinks').value;
+                        material.files = [];
+                    } else {
+                        // Handle file updates (would need more implementation for actual file changes)
+                    }
 
-        function deleteMaterial(id) {
+                    // Save changes
+                    await KarateMediaDB.updateMedia(material);
+                    document.getElementById('editModal').classList.add('hidden');
+                    await loadMaterials();
+                } catch (error) {
+                    console.error('Error editing material:', error);
+                    alert('Erro ao editar material');
+                }
+            });
+
+            // Toggle between file/link sections
+            document.querySelectorAll('input[name="contentType"]').forEach(radio => {
+                radio.addEventListener('change', (e) => {
+                    document.getElementById('editFileSection').classList.toggle('hidden', e.target.value !== 'file');
+                    document.getElementById('editLinkSection').classList.toggle('hidden', e.target.value !== 'link');
+                });
+            });
+
+            document.getElementById('editModal').classList.remove('hidden');
+        } catch (error) {
+            console.error('Error setting up edit form:', error);
+            alert('Erro ao configurar formulário de edição');
+        }
+    }
+
+        async function deleteMaterial(id) {
             if (confirm('Tem certeza que deseja excluir este material?')) {
-                const mediaData = JSON.parse(localStorage.getItem('mediaData')) || [];
-                localStorage.setItem('mediaData', 
-                    JSON.stringify(mediaData.filter(m => m.id.toString() !== id)));
-                loadMaterials();
+                try {
+                    await KarateMediaDB.deleteMedia(parseInt(id));
+                    await loadMaterials();
+                } catch (error) {
+                    console.error('Error deleting material:', error);
+                    alert('Erro ao excluir material');
+                }
             }
         }
 
@@ -344,13 +549,109 @@
             return names[category] || 'Outro';
         }
 
+        async function showPreview(materialId) {
+            try {
+                const mediaData = await KarateMediaDB.getAllMedia();
+                const material = mediaData.find(m => m.id.toString() === materialId);
+                if (!material) {
+                    console.error('Material not found');
+                    return;
+                }
+
+            const previewContent = document.getElementById('previewContent');
+            previewContent.innerHTML = '';
+
+            const previewActions = document.getElementById('previewActions');
+            previewActions.classList.add('hidden');
+            previewActions.innerHTML = '';
+
+            if (material.files && material.files.length > 0) {
+                const firstFile = material.files[0];
+                if (firstFile.content.startsWith('data:image')) {
+                    previewContent.innerHTML = `
+                        <img src="${firstFile.content}" alt="${firstFile.name}" class="w-full max-h-[80vh] object-contain">
+                    `;
+                    // Add download button
+                    const downloadBtn = document.createElement('a');
+                    downloadBtn.href = firstFile.content;
+                    downloadBtn.download = firstFile.name;
+                    downloadBtn.className = 'bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700';
+                    downloadBtn.innerHTML = '<i class="fas fa-download mr-2"></i> Baixar';
+                    previewActions.appendChild(downloadBtn);
+                    previewActions.classList.remove('hidden');
+                } else if (firstFile.content.startsWith('data:video')) {
+                    previewContent.innerHTML = `
+                        <video class="w-full" controls autoplay>
+                            <source src="${firstFile.content}" type="${firstFile.content.split(';')[0].split(':')[1]}">
+                        </video>
+                    `;
+                    // Add download button
+                    const downloadBtn = document.createElement('a');
+                    downloadBtn.href = firstFile.content;
+                    downloadBtn.download = firstFile.name;
+                    downloadBtn.className = 'bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700';
+                    downloadBtn.innerHTML = '<i class="fas fa-download mr-2"></i> Baixar';
+                    previewActions.appendChild(downloadBtn);
+                    previewActions.classList.remove('hidden');
+                } else if (firstFile.content.startsWith('data:application/pdf')) {
+                    previewContent.innerHTML = `
+                        <iframe src="${firstFile.content}" class="w-full h-[80vh]"></iframe>
+                    `;
+                    // Add download button
+                    const downloadBtn = document.createElement('a');
+                    downloadBtn.href = firstFile.content;
+                    downloadBtn.download = firstFile.name;
+                    downloadBtn.className = 'bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700';
+                    downloadBtn.innerHTML = '<i class="fas fa-download mr-2"></i> Baixar';
+                    previewActions.appendChild(downloadBtn);
+                    previewActions.classList.remove('hidden');
+                } else {
+                    previewContent.innerHTML = `
+                        <div class="text-center p-8">
+                            <i class="fas fa-file text-6xl text-gray-400 mb-4"></i>
+                            <p class="text-gray-500">Visualização não disponível</p>
+                        </div>
+                    `;
+                    // Add download button
+                    const downloadBtn = document.createElement('a');
+                    downloadBtn.href = firstFile.content;
+                    downloadBtn.download = firstFile.name;
+                    downloadBtn.className = 'bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700';
+                    downloadBtn.innerHTML = '<i class="fas fa-download mr-2"></i> Baixar';
+                    previewActions.appendChild(downloadBtn);
+                    previewActions.classList.remove('hidden');
+                }
+            } else if (material.links) {
+                previewContent.innerHTML = `
+                    <div class="text-center p-8">
+                        <i class="fas fa-link text-6xl text-blue-400 mb-4"></i>
+                        <p class="text-gray-700 mb-4">Link externo: ${material.links}</p>
+                    </div>
+                `;
+                // Add open link button
+                const openLinkBtn = document.createElement('a');
+                openLinkBtn.href = material.links;
+                openLinkBtn.target = '_blank';
+                openLinkBtn.className = 'bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700';
+                openLinkBtn.innerHTML = '<i class="fas fa-external-link-alt mr-2"></i> Abrir link';
+                previewActions.appendChild(openLinkBtn);
+                previewActions.classList.remove('hidden');
+            }
+
+            document.getElementById('previewModal').classList.remove('hidden');
+            } catch (error) {
+                console.error('Error showing preview:', error);
+                alert('Erro ao carregar visualização');
+            }
+        }
+
         function getMediaPreview(material) {
             if (material.files && material.files.length > 0) {
                 const firstFile = material.files[0];
                 if (firstFile.content.startsWith('data:image')) {
                     return `<img src="${firstFile.content}" alt="${firstFile.name}" class="w-full h-48 object-cover">`;
                 } else if (firstFile.content.startsWith('data:video')) {
-                    return `<video class="w-full h-48 object-cover bg-black" controls>
+                    return `<video class="w-full h-48 object-cover bg-black">
                         <source src="${firstFile.content}" type="${firstFile.content.split(';')[0].split(':')[1]}">
                     </video>`;
                 } else {
