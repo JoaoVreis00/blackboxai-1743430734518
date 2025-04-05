@@ -57,21 +57,37 @@
                 </div>
 
                 <div>
-                    <label class="block text-gray-700 font-bold mb-2">Arquivos:</label>
+                    <label class="block text-gray-700 font-bold mb-2">Tipo de Conteúdo:</label>
+                    <div class="flex space-x-4 mb-4">
+                        <label class="inline-flex items-center">
+                            <input type="radio" name="contentType" value="file" checked 
+                                class="form-radio text-red-600">
+                            <span class="ml-2">Arquivo</span>
+                        </label>
+                        <label class="inline-flex items-center">
+                            <input type="radio" name="contentType" value="link" 
+                                class="form-radio text-red-600">
+                            <span class="ml-2">Link</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div id="fileSection">
+                    <label class="block text-gray-700 font-bold mb-2">Arquivo:</label>
                     <div class="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center">
-                        <input type="file" id="files" name="files" multiple class="hidden"
+                        <input type="file" id="files" name="files" class="hidden"
                             accept="image/*,video/*,.pdf,.doc,.docx,.txt">
                         <label for="files" class="cursor-pointer">
                             <i class="fas fa-cloud-upload-alt text-4xl text-gray-400 mb-2"></i>
-                            <p class="text-gray-500">Clique para selecionar arquivos ou arraste-os aqui</p>
+                            <p class="text-gray-500">Clique para selecionar arquivo</p>
                             <p class="text-sm text-gray-400">Formatos aceitos: imagens, vídeos, PDF, Word, texto</p>
                         </label>
                     </div>
                     <div id="fileList" class="mt-2 space-y-2"></div>
                 </div>
 
-                <div>
-                    <label class="block text-gray-700 font-bold mb-2" for="links">Links (opcional):</label>
+                <div id="linkSection" class="hidden">
+                    <label class="block text-gray-700 font-bold mb-2" for="links">Link:</label>
                     <input type="text" id="links" name="links" placeholder="https://youtube.com/..."
                         class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
                 </div>
@@ -94,37 +110,45 @@
         </div>
     </main>
 
-    <script>
+    <script type="module">
+        import { addMedia, getAllMedia, updateMedia } from './database.js';
+        
         const fileInput = document.getElementById('files');
         const fileList = document.getElementById('fileList');
         const uploadForm = document.getElementById('uploadForm');
         const errorMessage = document.getElementById('errorMessage');
         const successMessage = document.getElementById('successMessage');
-        let mediaData = JSON.parse(localStorage.getItem('mediaData')) || [];
         
         // Check for material to edit in URL hash
-        window.addEventListener('DOMContentLoaded', () => {
-            const hash = window.location.hash.substring(1);
-            if (hash) {
-                const material = mediaData.find(m => m.id.toString() === hash);
-                if (material) {
-                    document.getElementById('belt').value = material.belt;
-                    document.getElementById('description').value = material.description;
-                    document.getElementById('links').value = material.links || '';
-                    
-                    // Show files in the file list
-                    const fileList = document.getElementById('fileList');
-                    fileList.innerHTML = '';
-                    material.files.forEach(file => {
-                        fileList.innerHTML += `
-                            <div class="flex items-center justify-between bg-gray-50 p-2 rounded mb-2" data-filename="${file.name}">
-                                <span class="truncate">${file.name}</span>
-                                <span class="text-xs text-gray-500">${formatFileSize(file.size)}</span>
-                                <input type="hidden" class="file-content" value="${file.content}">
-                            </div>
-                        `;
-                    });
+        window.addEventListener('DOMContentLoaded', async () => {
+            try {
+                const hash = window.location.hash.substring(1);
+                if (hash) {
+                    const allMedia = await getAllMedia();
+                    const material = allMedia.find(m => m.id.toString() === hash);
+                    if (material) {
+                        document.getElementById('belt').value = material.belt;
+                        document.getElementById('category').value = material.category || '';
+                        document.getElementById('description').value = material.description;
+                        document.getElementById('links').value = material.links || '';
+                        
+                        // Show files in the file list
+                        const fileList = document.getElementById('fileList');
+                        fileList.innerHTML = '';
+                        material.files.forEach(file => {
+                            fileList.innerHTML += `
+                                <div class="flex items-center justify-between bg-gray-50 p-2 rounded mb-2" data-filename="${file.name}">
+                                    <span class="truncate">${file.name}</span>
+                                    <span class="text-xs text-gray-500">${formatFileSize(file.size)}</span>
+                                    <input type="hidden" class="file-content" value="${file.content}">
+                                </div>
+                            `;
+                        });
+                    }
                 }
+            } catch (error) {
+                console.error('Error loading media:', error);
+                showError('Erro ao carregar material para edição');
             }
         });
 
@@ -148,51 +172,127 @@
             }
         });
 
+        // Toggle between file/link sections
+        document.querySelectorAll('input[name="contentType"]').forEach(radio => {
+            radio.addEventListener('change', (e) => {
+                document.getElementById('fileSection').classList.toggle('hidden', e.target.value !== 'file');
+                document.getElementById('linkSection').classList.toggle('hidden', e.target.value !== 'link');
+            });
+        });
+
         // Handle form submission
-        uploadForm.addEventListener('submit', (e) => {
+        uploadForm.addEventListener('submit', async (e) => {
             e.preventDefault();
 
-            const belt = document.getElementById('belt').value;
-            const description = document.getElementById('description').value;
-            const links = document.getElementById('links').value;
-            const files = [];
+            try {
+                const belt = document.getElementById('belt').value;
+                const category = document.getElementById('category').value;
+                const description = document.getElementById('description').value;
+                const contentType = document.querySelector('input[name="contentType"]:checked').value;
+                
+                // Validate
+                if (!belt) {
+                    showError('Selecione uma faixa!');
+                    return;
+                }
+                
+                if (!category) {
+                    showError('Selecione uma categoria!');
+                    return;
+                }
 
-            // Get all file data
-            document.querySelectorAll('#fileList > div').forEach(div => {
-                files.push({
-                    name: div.getAttribute('data-filename'),
-                    content: div.querySelector('.file-content').value
-                });
-            });
+                let files = [];
+                let links = '';
 
-            // Validate
-            if (!belt) {
-                showError('Selecione uma faixa!');
-                return;
+                if (contentType === 'file') {
+                    // Handle new file uploads
+                    if (fileInput.files.length > 0) {
+                        const fileReaders = Array.from(fileInput.files).map(file => {
+                            return new Promise((resolve) => {
+                                const reader = new FileReader();
+                                reader.onload = function(e) {
+                                    resolve({
+                                        name: file.name,
+                                        content: e.target.result,
+                                        size: file.size
+                                    });
+                                };
+                                reader.readAsDataURL(file);
+                            });
+                        });
+
+                        files = await Promise.all(fileReaders);
+                    } 
+                    // Handle existing files during edit
+                    else {
+                        document.querySelectorAll('#fileList > div').forEach(div => {
+                            files.push({
+                                name: div.getAttribute('data-filename'),
+                                content: div.querySelector('.file-content').value,
+                                size: div.querySelector('.file-size')?.value || 0
+                            });
+                        });
+                    }
+
+                    if (files.length === 0) {
+                        showError('Adicione um arquivo!');
+                        return;
+                    }
+                } else {
+                    links = document.getElementById('links').value;
+                    if (!links) {
+                        showError('Adicione um link!');
+                        return;
+                    }
+                    // Clear files when switching to link
+                    files = [];
+                }
+
+                // Check if we're editing an existing material
+                const urlParams = new URLSearchParams(window.location.search);
+                const isEdit = urlParams.get('edit');
+                let mediaId = Date.now();
+
+                if (isEdit) {
+                    const editingMaterial = JSON.parse(sessionStorage.getItem('editingMaterial'));
+                    if (editingMaterial) {
+                        mediaId = editingMaterial.id;
+                    }
+                }
+
+                // Create media object
+                const media = {
+                    id: mediaId,
+                    belt,
+                    category,
+                    description,
+                    links,
+                    files,
+                    date: new Date().toISOString()
+                };
+
+                // Save to IndexedDB
+                if (isEdit) {
+                    await updateMedia(media);
+                } else {
+                    await addMedia(media);
+                }
+
+                showSuccess(isEdit ? 'Material atualizado com sucesso!' : 'Material salvo com sucesso!');
+                
+                if (isEdit) {
+                    sessionStorage.removeItem('editingMaterial');
+                    setTimeout(() => {
+                        window.location.href = '/gallery.html';
+                    }, 1500);
+                } else {
+                    uploadForm.reset();
+                    fileList.innerHTML = '';
+                }
+            } catch (error) {
+                console.error('Error saving media:', error);
+                showError('Erro ao salvar material. Tente novamente.');
             }
-
-            if (files.length === 0 && !links) {
-                showError('Adicione pelo menos um arquivo ou link!');
-                return;
-            }
-
-            // Create media object
-            const media = {
-                id: Date.now(),
-                belt,
-                description,
-                links,
-                files,
-                date: new Date().toISOString()
-            };
-
-            // Save to local storage
-            mediaData.push(media);
-            localStorage.setItem('mediaData', JSON.stringify(mediaData));
-
-            showSuccess('Material salvo com sucesso!');
-            uploadForm.reset();
-            fileList.innerHTML = '';
         });
 
         function formatFileSize(bytes) {
