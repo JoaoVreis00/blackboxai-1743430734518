@@ -141,7 +141,7 @@
             </div>
     </main>
 
-    <script src="database.js"></script>
+    <script src="api.js"></script>
     <script>
         // Functions are now available globally from database.js
         
@@ -202,24 +202,24 @@
             loadMaterials();
         }
 
-        // Load materials from IndexedDB
+        // Load materials from API
         async function loadMaterials() {
             document.getElementById('loading').classList.remove('hidden');
             document.getElementById('materialsContainer').classList.add('hidden');
             document.getElementById('noResults').classList.add('hidden');
 
             try {
-                const mediaData = await KarateMediaDB.getAllMedia();
+                const filters = {};
+                if (currentBelt !== 'all') filters.belt = currentBelt;
+                if (currentCategory !== 'all') filters.category = currentCategory;
                 
-                // Filter by belt, category and search term
-                const filteredMaterials = mediaData.filter(m => {
-                    const matchesBelt = currentBelt === 'all' || m.belt === currentBelt;
-                    const matchesCategory = currentCategory === 'all' || m.category === currentCategory;
-                    const matchesSearch = currentSearch
-                        ? m.description && m.description.toLowerCase().includes(currentSearch)
-                        : true;
-                    return matchesBelt && matchesCategory && matchesSearch;
-                });
+                const mediaData = await KarateMediaAPI.getAllMedia(filters);
+                
+                // Filter by search term
+                const filteredMaterials = currentSearch
+                    ? mediaData.filter(m => 
+                        m.description && m.description.toLowerCase().includes(currentSearch))
+                    : mediaData;
 
                 displayMaterials(filteredMaterials);
             } catch (error) {
@@ -344,8 +344,8 @@
         async function editMaterial(id, event) {
             event.stopPropagation();
             try {
-                const mediaData = await KarateMediaDB.getAllMedia();
-                const material = mediaData.find(m => m.id.toString() === id);
+                const mediaData = await KarateMediaAPI.getAllMedia();
+                const material = mediaData.find(m => m._id === id);
                 if (!material) return;
 
                 const editForm = document.getElementById('editFormContent');
@@ -466,7 +466,7 @@
                     }
 
                     // Save changes
-                    await KarateMediaDB.updateMedia(material);
+                    await KarateMediaAPI.updateMedia(material._id, material);
                     document.getElementById('editModal').classList.add('hidden');
                     await loadMaterials();
                 } catch (error) {
@@ -493,7 +493,7 @@
         async function deleteMaterial(id) {
             if (confirm('Tem certeza que deseja excluir este material?')) {
                 try {
-                    await KarateMediaDB.deleteMedia(parseInt(id));
+                await KarateMediaAPI.deleteMedia(id);
                     await loadMaterials();
                 } catch (error) {
                     console.error('Error deleting material:', error);
@@ -551,8 +551,8 @@
 
         async function showPreview(materialId) {
             try {
-                const mediaData = await KarateMediaDB.getAllMedia();
-                const material = mediaData.find(m => m.id.toString() === materialId);
+                const mediaData = await KarateMediaAPI.getAllMedia();
+                const material = mediaData.find(m => m._id === materialId);
                 if (!material) {
                     console.error('Material not found');
                     return;
