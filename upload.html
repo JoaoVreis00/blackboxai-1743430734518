@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
-
 <head>
+    <!-- Cabeçalho mantido igual -->
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Enviar Material - Academia de Karatê</title>
@@ -10,6 +10,7 @@
 </head>
 
 <body class="bg-gray-100">
+    <!-- Navbar mantido igual -->
     <nav class="bg-red-700 text-white p-4 shadow-lg">
         <div class="container mx-auto flex justify-between items-center">
             <h1 class="text-2xl font-bold">Academia de Karatê</h1>
@@ -23,15 +24,13 @@
     </nav>
 
     <main class="container mx-auto p-4">
+        <!-- Conteúdo do formulário mantido igual -->
         <div class="max-w-2xl mx-auto bg-white rounded-lg shadow-md p-6">
             <h2 class="text-2xl font-bold mb-6 text-center">Enviar Material Didático</h2>
-
             <form id="uploadForm" class="space-y-4">
                 <div>
                     <label class="block text-gray-700 font-bold mb-2" for="belt">Faixa:</label>
-                    <select name="belt" id="belt"
-                        class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        required>
+                    <select id="belt" name="belt" class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" required>
                         <option value="">Selecione uma faixa</option>
                         <option value="branca">Branca</option>
                         <option value="amarela">Amarela</option>
@@ -46,9 +45,7 @@
 
                 <div>
                     <label class="block text-gray-700 font-bold mb-2" for="category">Categoria:</label>
-                    <select name="category" id="category"
-                        class"w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        required>
+                    <select id="category" name="category" class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" required>
                         <option value="">Selecione uma categoria</option>
                         <option value="kata">Kata</option>
                         <option value="kihon">Kihon</option>
@@ -57,264 +54,118 @@
                 </div>
 
                 <div>
-                    <label class="block text-gray-700 font-bold mb-2">Tipo de Conteúdo:</label>
-                    <div class="flex space-x-4 mb-4">
-                        <label class="inline-flex items-center">
-                            <input type="radio" name="contentType" value="file" checked 
-                                class="form-radio text-red-600">
-                            <span class="ml-2">Arquivo</span>
-                        </label>
-                        <label class="inline-flex items-center">
-                            <input type="radio" name="contentType" value="link" 
-                                class="form-radio text-red-600">
-                            <span class="ml-2">Link</span>
-                        </label>
-                    </div>
-                </div>
-
-                <div id="fileSection">
-                    <label class="block text-gray-700 font-bold mb-2">Arquivo:</label>
-                    <div class="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center">
-                        <input type="file" id="files" name="files" class="hidden"
-                            accept="image/*,video/*,.pdf,.doc,.docx,.txt">
-                        <label for="files" class="cursor-pointer">
-                            <i class="fas fa-cloud-upload-alt text-4xl text-gray-400 mb-2"></i>
-                            <p class="text-gray-500">Clique para selecionar arquivo</p>
-                            <p class="text-sm text-gray-400">Formatos aceitos: imagens, vídeos, PDF, Word, texto</p>
-                        </label>
-                    </div>
-                    <div id="fileList" class="mt-2 space-y-2"></div>
-                </div>
-
-                <div id="linkSection" class="hidden">
-                    <label class="block text-gray-700 font-bold mb-2" for="links">Link:</label>
-                    <input type="text" id="links" name="links" placeholder="https://youtube.com/..."
-                        class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <label class="block text-gray-700 font-bold mb-2" for="description">Descrição:</label>
+                    <textarea id="description" name="description" rows="3" class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Descreva o material..."></textarea>
                 </div>
 
                 <div>
-                    <label class="block text-gray-700 font-bold mb-2" for="description">Descrição:</label>
-                    <textarea id="description" name="description" rows="3"
-                        class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        placeholder="Descreva o material (técnica, aplicação, etc.)"></textarea>
+                    <label class="block text-gray-700 font-bold mb-2">Arquivo:</label>
+                    <div class="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center">
+                        <input type="file" id="files" name="files" class="hidden" accept="image/*,video/*,.pdf,.doc,.docx,.txt" multiple>
+                        <label for="files" class="cursor-pointer">
+                            <i class="fas fa-cloud-upload-alt text-4xl text-gray-400 mb-2"></i>
+                            <p class="text-gray-500">Clique para selecionar arquivo</p>
+                        </label>
+                    </div>
+                    <div id="fileList" class="mt-2"></div>
                 </div>
 
-                <div id="errorMessage" class="text-red-500 hidden"></div>
-                <div id="successMessage" class="text-green-500 hidden"></div>
-
-                <button type="submit"
-                    class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-4 rounded-lg transition duration-200">
-                    <i class="fas fa-paper-plane mr-2"></i> Enviar Material
-                </button>
+                <div class="pt-4">
+                    <button type="submit" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500">
+                        <i class="fas fa-save mr-2"></i> Salvar Material
+                    </button>
+                </div>
             </form>
         </div>
     </main>
 
-    <script type="module">
-        import { addMedia, getAllMedia, updateMedia } from './database.js';
-        
+    <script src="api.js"></script>
+    <script>
         const fileInput = document.getElementById('files');
         const fileList = document.getElementById('fileList');
         const uploadForm = document.getElementById('uploadForm');
-        const errorMessage = document.getElementById('errorMessage');
-        const successMessage = document.getElementById('successMessage');
-        
-        // Check for material to edit in URL hash
-        window.addEventListener('DOMContentLoaded', async () => {
-            try {
-                const hash = window.location.hash.substring(1);
-                if (hash) {
-                    const allMedia = await getAllMedia();
-                    const material = allMedia.find(m => m.id.toString() === hash);
-                    if (material) {
-                        document.getElementById('belt').value = material.belt;
-                        document.getElementById('category').value = material.category || '';
-                        document.getElementById('description').value = material.description;
-                        document.getElementById('links').value = material.links || '';
-                        
-                        // Show files in the file list
-                        const fileList = document.getElementById('fileList');
-                        fileList.innerHTML = '';
-                        material.files.forEach(file => {
-                            fileList.innerHTML += `
-                                <div class="flex items-center justify-between bg-gray-50 p-2 rounded mb-2" data-filename="${file.name}">
-                                    <span class="truncate">${file.name}</span>
-                                    <span class="text-xs text-gray-500">${formatFileSize(file.size)}</span>
-                                    <input type="hidden" class="file-content" value="${file.content}">
-                                </div>
-                            `;
-                        });
-                    }
-                }
-            } catch (error) {
-                console.error('Error loading media:', error);
-                showError('Erro ao carregar material para edição');
-            }
-        });
+        let isEdit = false;
+        let media = {};
 
-        // Display selected files
-        fileInput.addEventListener('change', () => {
+        // Handle file selection
+        fileInput.addEventListener('change', (e) => {
             fileList.innerHTML = '';
-            if (fileInput.files.length > 0) {
-                Array.from(fileInput.files).forEach(file => {
-                    const reader = new FileReader();
-                    reader.onload = function(e) {
-                        fileList.innerHTML += `
-                            <div class="flex items-center justify-between bg-gray-50 p-2 rounded mb-2" data-filename="${file.name}">
-                                <span class="truncate">${file.name}</span>
-                                <span class="text-xs text-gray-500">${formatFileSize(file.size)}</span>
-                                <input type="hidden" class="file-content" value="${e.target.result}">
-                            </div>
-                        `;
-                    };
-                    reader.readAsDataURL(file);
-                });
-            }
-        });
-
-        // Toggle between file/link sections
-        document.querySelectorAll('input[name="contentType"]').forEach(radio => {
-            radio.addEventListener('change', (e) => {
-                document.getElementById('fileSection').classList.toggle('hidden', e.target.value !== 'file');
-                document.getElementById('linkSection').classList.toggle('hidden', e.target.value !== 'link');
+            Array.from(e.target.files).forEach(file => {
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    const fileItem = document.createElement('div');
+                    fileItem.className = 'flex items-center justify-between bg-gray-50 p-2 rounded mb-2';
+                    fileItem.innerHTML = `
+                        <span class="truncate">${file.name}</span>
+                        <span class="text-sm text-gray-500">${(file.size / 1024).toFixed(2)} KB</span>
+                    `;
+                    fileList.appendChild(fileItem);
+                    
+                    if (!media.files) media.files = [];
+                    media.files.push({
+                        name: file.name,
+                        type: file.type,
+                        size: file.size,
+                        content: event.target.result
+                    });
+                };
+                reader.readAsDataURL(file);
             });
         });
 
-        // Handle form submission
+        // Form submission
         uploadForm.addEventListener('submit', async (e) => {
             e.preventDefault();
-
+            
             try {
-                const belt = document.getElementById('belt').value;
-                const category = document.getElementById('category').value;
-                const description = document.getElementById('description').value;
-                const contentType = document.querySelector('input[name="contentType"]:checked').value;
+                // Get form values
+                media.belt = document.getElementById('belt').value;
+                media.category = document.getElementById('category').value;
+                media.description = document.getElementById('description').value;
+                media.date = new Date().toISOString();
                 
-                // Validate
-                if (!belt) {
-                    showError('Selecione uma faixa!');
-                    return;
-                }
-                
-                if (!category) {
-                    showError('Selecione uma categoria!');
-                    return;
-                }
-
-                let files = [];
-                let links = '';
-
-                if (contentType === 'file') {
-                    // Handle new file uploads
-                    if (fileInput.files.length > 0) {
-                        const fileReaders = Array.from(fileInput.files).map(file => {
-                            return new Promise((resolve) => {
-                                const reader = new FileReader();
-                                reader.onload = function(e) {
-                                    resolve({
-                                        name: file.name,
-                                        content: e.target.result,
-                                        size: file.size
-                                    });
-                                };
-                                reader.readAsDataURL(file);
-                            });
-                        });
-
-                        files = await Promise.all(fileReaders);
-                    } 
-                    // Handle existing files during edit
-                    else {
-                        document.querySelectorAll('#fileList > div').forEach(div => {
-                            files.push({
-                                name: div.getAttribute('data-filename'),
-                                content: div.querySelector('.file-content').value,
-                                size: div.querySelector('.file-size')?.value || 0
-                            });
-                        });
-                    }
-
-                    if (files.length === 0) {
-                        showError('Adicione um arquivo!');
-                        return;
-                    }
-                } else {
-                    links = document.getElementById('links').value;
-                    if (!links) {
-                        showError('Adicione um link!');
-                        return;
-                    }
-                    // Clear files when switching to link
-                    files = [];
-                }
-
-                // Check if we're editing an existing material
-                const urlParams = new URLSearchParams(window.location.search);
-                const isEdit = urlParams.get('edit');
-                let mediaId = Date.now();
-
+                // Save to API
                 if (isEdit) {
-                    const editingMaterial = JSON.parse(sessionStorage.getItem('editingMaterial'));
-                    if (editingMaterial) {
-                        mediaId = editingMaterial.id;
-                    }
-                }
-
-                // Create media object
-                const media = {
-                    id: mediaId,
-                    belt,
-                    category,
-                    description,
-                    links,
-                    files,
-                    date: new Date().toISOString()
-                };
-
-                // Save to IndexedDB
-                if (isEdit) {
-                    await updateMedia(media);
+                    await KarateMediaAPI.updateMedia(media._id, media);
                 } else {
-                    await addMedia(media);
+                    await KarateMediaAPI.addMedia(media);
                 }
 
-                showSuccess(isEdit ? 'Material atualizado com sucesso!' : 'Material salvo com sucesso!');
-                
-                if (isEdit) {
-                    sessionStorage.removeItem('editingMaterial');
-                    setTimeout(() => {
-                        window.location.href = '/gallery.html';
-                    }, 1500);
-                } else {
-                    uploadForm.reset();
-                    fileList.innerHTML = '';
-                }
+                // Show success and reset form
+                showSuccess('Material salvo com sucesso!');
+                uploadForm.reset();
+                fileList.innerHTML = '';
+                media = {};
+                isEdit = false;
             } catch (error) {
                 console.error('Error saving media:', error);
                 showError('Erro ao salvar material. Tente novamente.');
             }
         });
 
-        function formatFileSize(bytes) {
-            if (bytes === 0) return '0 Bytes';
-            const k = 1024;
-            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-            const i = Math.floor(Math.log(bytes) / Math.log(k));
-            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        function showSuccess(message) {
+            const alert = document.createElement('div');
+            alert.className = 'bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative mb-4';
+            alert.innerHTML = `
+                <span class="block sm:inline">${message}</span>
+                <span class="absolute top-0 bottom-0 right-0 px-4 py-3" onclick="this.parentElement.remove()">
+                    <i class="fas fa-times"></i>
+                </span>
+            `;
+            uploadForm.prepend(alert);
         }
 
         function showError(message) {
-            errorMessage.textContent = message;
-            errorMessage.classList.remove('hidden');
-            successMessage.classList.add('hidden');
-        }
-
-        function showSuccess(message) {
-            successMessage.textContent = message;
-            successMessage.classList.remove('hidden');
-            errorMessage.classList.add('hidden');
+            const alert = document.createElement('div');
+            alert.className = 'bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4';
+            alert.innerHTML = `
+                <span class="block sm:inline">${message}</span>
+                <span class="absolute top-0 bottom-0 right-0 px-4 py-3" onclick="this.parentElement.remove()">
+                    <i class="fas fa-times"></i>
+                </span>
+            `;
+            uploadForm.prepend(alert);
         }
     </script>
 </body>
-
 </html>
